@@ -6,9 +6,9 @@ import plotly.express as px
 filename = 'data/vuelos-enero-2023.xlsx'
 sheet_name_international_flights = 'CUADRO 5'
 sheet_name_national_flights = 'CUADRO 6'
-num_rows_header = 7
+num_rows_header = 7 
 num_rows_footer = 1 # Aggregates row
-relevant_columns = 'A:F, I, K, M' # Airport and passenger info from 2022
+relevant_columns = 'A:F, G, I, K' # Airport and passenger info from 2022
 
 column_names = [
     'origin_code',
@@ -17,9 +17,9 @@ column_names = [
     'destination_code',
     'destination_city',
     'destination_state',
+    'number_of_flights',
     'seats_offered',
     'passengers',
-    'occupancy_rate',
 ]
 
 # %%
@@ -37,7 +37,7 @@ international_flights = pd.read_excel(
     filename,
     sheet_name=sheet_name_international_flights,
     skiprows=num_rows_header,
-    usecols=relevant_columns,
+    # usecols=relevant_columns,
     names=column_names,
     skipfooter=num_rows_footer,
 )
@@ -50,7 +50,7 @@ outgoing_flights_by_airport = (
     flights
     .query("origin_state == 'COLOMBIA'")
     .groupby('origin_code')
-    [['passengers', 'seats_offered']]
+    [['passengers', 'seats_offered', 'number_of_flights']]
     .sum()
     .astype(pd.Int64Dtype())
     .reset_index()
@@ -60,7 +60,7 @@ incoming_flights_by_airport = (
     flights
     .query("destination_state == 'COLOMBIA'")
     .groupby('destination_code')
-    [['passengers', 'seats_offered']]
+    [['passengers', 'seats_offered', 'number_of_flights']]
     .sum()
     .astype(pd.Int64Dtype())
     .reset_index()
@@ -80,11 +80,13 @@ flights_by_airport = (
 top_airports = (
     flights_by_airport
     .assign(
-        total_flights=lambda x: x['passengers_outgoing'] + x['passengers_incoming'],
+        total_passengers=lambda x: x['passengers_outgoing'] + x['passengers_incoming'],
+        total_flights=lambda x: x['number_of_flights_outgoing'] + x['number_of_flights_incoming'],
         total_seats=lambda x: x['seats_offered_outgoing'] + x['seats_offered_incoming'],
-        total_occupancy=lambda x: x['total_flights'] / x['total_seats']
+        passengers_per_flight=lambda x: x['total_passengers'] / x['total_flights'],
+        occupancy_rate=lambda x: x['total_passengers'] / x['total_seats'],
     )
-    .nlargest(12, 'total_flights')
+    .nlargest(10, 'total_flights')
     .reset_index(drop=True)
 )
 
@@ -95,11 +97,12 @@ top_airports
 top_airports_to_plot = top_airports.rename(
     {
         'airport_code': 'Código de Aeropuerto',
-        'passengers_outgoing': 'Origen',
-        'passengers_incoming': 'Destino',
-        'total_flights': 'Pasajeros Servidos en 2022',
+        'number_of_flights_outgoing': 'Origen',
+        'number_of_flights_incoming': 'Destino',
+        'total_flights': 'Número de Vuelos en 2022',
+        'passengers_per_flight': 'Pasajeros por Vuelo',
         'total_seats': 'Sillas',
-        'total_occupancy': 'Tasa de Ocupación',
+        'occupancy_rate': 'Tasa de Ocupación',
     },
     axis=1,
 )
@@ -109,10 +112,10 @@ fig_bars = px.histogram(
     x='Código de Aeropuerto',
     y=['Origen', 'Destino'],
     barmode='stack',
-    title='Top 12 Aeropuertos por Pasajeros Servidos en 2022',
+    title='Top 12 Aeropuertos por Número de Vuelos en 2022',
     labels={
         'airport_code': 'Código de Aeropuerto',
-        'value': 'Pasajeros',
+        'value': 'Vuelos',
         'variable': 'El Aeropuerto es:',
     },
 )
@@ -122,15 +125,15 @@ fig_bars.write_image('media/top_airports.png', scale=5)
 
 fig_scatter = px.scatter(
     top_airports_to_plot,
-    x='Pasajeros Servidos en 2022',
-    y='Tasa de Ocupación',
+    x='Tasa de Ocupación',
+    y='Pasajeros por Vuelo',
     text='Código de Aeropuerto',
-    title='Tasa de Ocupación vs Pasajeros Servidos en 2022',
-    log_x=True,
+    title='Pasajeros por Vuelo vs Tasa de Ocupación',
+    # log_x=True,
 )
 
 fig_scatter.update_traces(
-    textposition='top left',
+    textposition='top center',
     textfont=dict(size=12, color='black', family='Arial',),
 )
 
