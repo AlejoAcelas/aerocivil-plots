@@ -84,6 +84,7 @@ top_airports = (
         total_flights=lambda x: x['number_of_flights_outgoing'] + x['number_of_flights_incoming'],
         total_seats=lambda x: x['seats_offered_outgoing'] + x['seats_offered_incoming'],
         passengers_per_flight=lambda x: x['total_passengers'] / x['total_flights'],
+        seats_per_flight=lambda x: x['total_seats'] / x['total_flights'],
         occupancy_rate=lambda x: x['total_passengers'] / x['total_seats'],
     )
     .nlargest(10, 'total_flights')
@@ -101,27 +102,37 @@ top_airports_to_plot = top_airports.rename(
         'number_of_flights_incoming': 'Destino',
         'total_flights': 'Número de Vuelos en 2022',
         'passengers_per_flight': 'Pasajeros por Vuelo',
-        'total_seats': 'Sillas',
+        'total_seats': 'Sillas Ofrecidas',
         'occupancy_rate': 'Tasa de Ocupación',
+        'seats_per_flight': 'Sillas Ofrecidas por Vuelo',
     },
     axis=1,
 )
 
-fig_bars = px.histogram(
+fig_bars = px.bar(
     top_airports_to_plot,
     x='Código de Aeropuerto',
-    y=['Origen', 'Destino'],
-    barmode='stack',
-    title='Top 12 Aeropuertos por Número de Vuelos en 2022',
+    y='Número de Vuelos en 2022',
+    title='Top 10 Aeropuertos por Número de Vuelos en 2022',
     labels={
-        'airport_code': 'Código de Aeropuerto',
         'value': 'Vuelos',
-        'variable': 'El Aeropuerto es:',
     },
 )
 
+fig_bars2 = px.bar(
+    top_airports_to_plot,
+    x='Código de Aeropuerto',
+    y='Sillas Ofrecidas por Vuelo',
+    title='Sillas Ofrecidas por Vuelo en 2022',
+)
+
+
 fig_bars.show()
+fig_bars2.show()
+
 fig_bars.write_image('media/top_airports.png', scale=5)
+fig_bars2.write_image('media/seats_per_flight.png', scale=5)
+
 
 fig_scatter = px.scatter(
     top_airports_to_plot,
